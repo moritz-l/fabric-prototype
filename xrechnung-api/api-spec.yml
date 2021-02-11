@@ -1,0 +1,108 @@
+openapi: '3.0.2'
+info:
+  title: XRechnung API 
+  version: '1.0'
+servers:
+  - url: https://api.server.test/v1
+
+components:
+  schemas:
+      Identity:
+        type: object
+        properties:
+          credentials:
+            $ref: '#/components/schemas/Credentials'
+          mspID: 
+            type: string
+          type:
+            type: string
+      Credentials:
+        type: object
+        properties:
+          certificate: 
+            type: string
+          privateKey:
+            type: string
+      Invoice:
+        type: object
+        properties:
+          invoiceID: 
+            type: string
+          senderID:
+            type: string
+          receiverID:
+            type: string
+          file:
+            type: string
+            format: byte
+  securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic
+
+paths:
+  /identity:
+    post:
+      description: get a new valid identity
+      responses:
+        '200':
+          description: OK
+  /invoices:
+    get:
+      description: get all invoices for the account  
+      responses:
+        '200':
+          description: OK
+    post:
+      description: add an invoice to the ledger
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Identity' 
+      responses:
+        '200':
+          description: OK
+
+  /invoice/{invoiceID}:
+    get:
+      description: get an invoice
+      parameters:
+        - in: path
+          name: invoiceID
+          schema:
+            type: string
+            format: uuid
+          required: true
+          description: unique ID of an invoice
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Identity'
+      responses:
+        '200':
+          description: OK
+
+    delete:
+      description: delete an invoice
+      parameters:
+        - in: path
+          name: invoiceID
+          schema:
+            type: string
+            format: uuid
+          required: true
+          description: unique ID of an invoice
+      responses:
+        '200':
+          description: OK
+
+security:
+  - basicAuth: []
+
+
+
+
