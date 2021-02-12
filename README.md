@@ -1,3 +1,7 @@
 # fabric-prototype
-This is the prototype I developed for my master thesis. It's not functional without a correctly configured connection definition and a valid peer-wallet for the API. 
+This is the prototype I developed for my master thesis. It's not functional without a correctly configured connection definition and a valid peer-wallet for the API to use with the Fabric-SDK. 
+
+Currently there are two main directories:
+- *fabric-api* contains the source code for a REST-API that interacts with a local fabric-peer
+- *fabric-testnetwork* contains the source code for three smart contracts and a collection definition that has to be provided when instantiating one of the smart contracts on the fabric-network
 
