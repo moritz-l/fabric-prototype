@@ -2,7 +2,7 @@
   "name": "api",
   "version": "1.0.0",
   "description": "Simple API for prototyping",
-  "main": "source/server.ts",
+  "main": "src/server.ts",
   "scripts": {
     "build": "rm -rf build/ && prettier --write src/ && tsc"
   },
