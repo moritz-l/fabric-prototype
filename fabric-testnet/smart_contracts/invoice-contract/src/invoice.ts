@@ -24,3 +24,16 @@ export class Invoice {
 
 }
 
+@Object()
+export class PrivateData {
+
+    @Property()
+    public encryptedData: string;
+
+    @Property()
+    public key: string;
+
+    @Property()
+    public iv: string
+
+}

@@ -1,6 +1,6 @@
 {
-  "name": "invoice2-contract",
-  "version": "0.0.25",
+  "name": "invoice-contract",
+  "version": "0.0.12",
   "description": "Basic invoice contract",
   "main": "dist/index.js",
   "typings": "dist/index.d.ts",

@@ -83,7 +83,7 @@ async function enrollNewUser(userName: string): Promise<void> {
     const fabricCA = gateway.getClient().getCertificateAuthority();
     const registrar = gateway.getCurrentIdentity();
 
-    // Register the user with the CA (don't set the affiliation)
+    // Register the user with the CA (don't set an affiliation)
     const secret = await fabricCA.register(
         {
             affiliation: '',
@@ -138,7 +138,7 @@ async function submitTransaction(userName: string, contractName: string, contrac
 /**
  * Accept private data and submit it into the transient store
  */
-async function submitTransactionPrivateData(userName: string, contractName: string, contractMethod: string, args: string[], privateData: Buffer): Promise<void> {
+async function submitTransactionPrivateData(userName: string, contractName: string, contractMethod: string, args: string[], privateData: string): Promise<void> {
     // Connect to the gateway
     const gateway = await connectToGateway(userName);
 
@@ -153,8 +153,12 @@ async function submitTransactionPrivateData(userName: string, contractName: stri
 
         if (privateData != null) {
             // const buffer = Buffer.from(privateData);
+            const privateDataJSON = JSON.parse(privateData);
+
             tx.setTransient({
-                private: privateData
+                encryptedData: Buffer.from(privateDataJSON.encryptedData),
+                key: Buffer.from(privateDataJSON.key),
+                iv: Buffer.from(privateDataJSON.iv)
             });
         }
         await tx.submit(...args);

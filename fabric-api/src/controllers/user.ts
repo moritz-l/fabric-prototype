@@ -1,8 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
-import mongoose from 'mongoose';
 import bcryptjs from 'bcryptjs';
 import logging from '../config/logging';
-import signJWT from '../functions/signJTW';
 import fabricFunctions from '../functions/fabric';
 import * as crypto from 'crypto';
 
@@ -41,7 +39,7 @@ const register = async (req: Request, res: Response, next: NextFunction) => {
 
         // Enroll the organisation
         await fabricFunctions.submitTransaction(user.username, 'user_contract', 'createUser', [user.username, hashedPassword, salt]);
-        
+
         return res.status(200).json({
             message: `User ${user.username} has been registered`,
             privateKey: privateKey.export.toString()
