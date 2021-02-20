@@ -6,6 +6,10 @@ import * as crypto from 'crypto';
 
 const NAMESPACE = 'User';
 
+/*
+ * This is not finished
+ */
+
 const validateToken = (req: Request, res: Response, next: NextFunction) => {
     logging.info(NAMESPACE, 'Token validated, user authorized.');
 
@@ -25,9 +29,11 @@ const register = async (req: Request, res: Response, next: NextFunction) => {
     const salt = await bcryptjs.genSalt(10);
     const hashedPassword = await bcryptjs.hash(user.password, salt);
 
+    const username = req.app.locals.config.username;
+
     try {
         // Create the wallet
-        fabricFunctions.enrollNewUser(user.username);
+        fabricFunctions.enrollNewUser(req.app.locals.config, user.username);
 
         // Create the keypair for the user
         const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa', {
@@ -35,10 +41,10 @@ const register = async (req: Request, res: Response, next: NextFunction) => {
         });
 
         // Add the user info to the blockchain
-        await fabricFunctions.submitTransaction(user.username, 'user_contract', 'createUser', [user.username, hashedPassword, salt]);
+        await fabricFunctions.submitTransaction(req.app.locals.config, user.username, 'user_contract', 'createUser', [user.username, hashedPassword, salt]);
 
         // Enroll the organisation
-        await fabricFunctions.submitTransaction(user.username, 'user_contract', 'createUser', [user.username, hashedPassword, salt]);
+        await fabricFunctions.submitTransaction(req.app.locals.config, user.username, 'user_contract', 'createUser', [user.username, hashedPassword, salt]);
 
         return res.status(200).json({
             message: `User ${user.username} has been registered`,
@@ -55,9 +61,11 @@ const login = async (req: Request, res: Response, next: NextFunction) => {
         password: req.body.password
     };
 
+    const username = req.app.locals.config.username;
+
     try {
         // Check if the user exists in the wallet
-        const userexists = await fabricFunctions.userExists(user.username);
+        const userexists = await fabricFunctions.userExists(user.username, req.app.locals.config);
         if (userexists == false) {
             const error = new Error();
             error.message = `User ${user.username} does not exist`;
@@ -65,7 +73,7 @@ const login = async (req: Request, res: Response, next: NextFunction) => {
         }
 
         // Get the user info
-        const userInfoAsString = await fabricFunctions.evaluateTransaction(user.username, 'user_contract', 'readUser', [user.username]);
+        const userInfoAsString = await fabricFunctions.evaluateTransaction(req.app.locals.config, user.username, 'user_contract', 'readUser', [user.username]);
         const userInfo = JSON.parse(userInfoAsString);
         const hashedStoredPassword = await bcryptjs.hash(user.password, userInfo.salt);
         const hashedProvidedPassword = await bcryptjs.hash(userInfo.password, userInfo.salt);

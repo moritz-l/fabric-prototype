@@ -1,31 +1,24 @@
-import e from 'express';
-import { IdentityService } from 'fabric-ca-client';
-import Client from 'fabric-client';
 const FabricCAService = require('fabric-ca-client');
-import { FileSystemWallet, Gateway, InMemoryWallet, Identity, Transaction, Contract, X509WalletMixin } from 'fabric-network';
+import { FileSystemWallet, Gateway, X509WalletMixin } from 'fabric-network';
 import * as path from 'path';
 
-const CHANNEL = 'mychannel';
-const ADMIN = 'admin';
-const WALLET = 'Org1Wallet';
-const MSPID = 'Org1MSP';
 /**
  * Check if the user exists in the wallet
  */
-async function userExists(userName: string): Promise<boolean> {
-    const wallet = await getWallet();
+async function userExists(userName: string, config: any): Promise<boolean> {
+    const wallet = await getWallet(config);
     return wallet.exists(userName);
 }
 /**
  * Connect to the gateway using the connection profile
  */
-async function connectToGateway(userName: string): Promise<Gateway> {
+async function connectToGateway(userName: string, config: any): Promise<Gateway> {
     // Get the wallet
-    const wallet = await getWallet();
+    const wallet = await getWallet(config);
 
     // Create a new gateway for connecting to our peer node
     const gateway = new Gateway();
-    const connectionProfile = path.resolve(__dirname, '../..', 'connection.json');
+    const connectionProfile = path.resolve(__dirname, '../..', String(config.connection));
 
     // Connect to the peer
     await gateway.connect(connectionProfile, {
@@ -42,9 +35,9 @@ async function connectToGateway(userName: string): Promise<Gateway> {
 /**
  * getWallet() creates a user in the wallet
  */
-async function getWallet(): Promise<FileSystemWallet> {
+async function getWallet(config: any): Promise<FileSystemWallet> {
     // Get the existing file system wallet
-    const walletPath = path.join(process.cwd(), WALLET);
+    const walletPath = path.join(process.cwd(), String(config.wallet));
     const wallet = new FileSystemWallet(walletPath);
     console.log(`Wallet path: ${walletPath}`);
 
@@ -53,9 +46,9 @@ async function getWallet(): Promise<FileSystemWallet> {
 /**
  * Creates a user in the wallet
  */
-async function enrollNewUser(userName: string): Promise<void> {
+async function enrollNewUser(userName: string, config: any): Promise<void> {
     // Get the existing file system wallet
-    const wallet = await getWallet();
+    const wallet = await getWallet(config);
 
     // Check if the user exists
     if (true == (await wallet.exists(userName))) {
@@ -66,7 +59,7 @@ async function enrollNewUser(userName: string): Promise<void> {
 
     // Create a new gateway for connecting to our peer node as admin
     const gateway = new Gateway();
-    const connectionProfile = path.resolve(__dirname, '../..', 'connection.json');
+    const connectionProfile = path.resolve(__dirname, '../..', String(config.connection));
     const connectionOptions = {
         wallet,
         identity: userName,
@@ -107,19 +100,19 @@ async function enrollNewUser(userName: string): Promise<void> {
     });
 
     // Create an entry in the wallet
-    const userIdentity = X509WalletMixin.createIdentity(MSPID, enrollment.certificate, enrollment.key.toBytes());
+    const userIdentity = X509WalletMixin.createIdentity(String(config.mspid), enrollment.certificate, enrollment.key.toBytes());
 
     await wallet.import(userName, userIdentity);
 }
 /**
  * Submit a transaction which changes the world state in Hyperledger
  */
-async function submitTransaction(userName: string, contractName: string, contractMethod: string, args: string[]): Promise<void> {
+async function submitTransaction(config: any, userName: string, contractName: string, contractMethod: string, args: string[]): Promise<void> {
     // Connect to the gateway
-    const gateway = await connectToGateway(userName);
+    const gateway = await connectToGateway(userName, config);
 
     // Get the network (channel) our contract is deployed to
-    const network = await gateway.getNetwork(CHANNEL);
+    const network = await gateway.getNetwork(String(config.channel));
 
     // Get the contract from the network
     try {
@@ -138,12 +131,12 @@ async function submitTransaction(userName: string, contractName: string, contrac
 /**
  * Accept private data and submit it into the transient store
  */
-async function submitTransactionPrivateData(userName: string, contractName: string, contractMethod: string, args: string[], privateData: string): Promise<void> {
+async function submitTransactionPrivateData(config: any, userName: string, contractName: string, contractMethod: string, args: string[], privateData: string): Promise<void> {
     // Connect to the gateway
-    const gateway = await connectToGateway(userName);
+    const gateway = await connectToGateway(userName, config);
 
     // Get the network (channel) our contract is deployed to
-    const network = await gateway.getNetwork(CHANNEL);
+    const network = await gateway.getNetwork(String(config.channel));
 
     // Get the contract from the network
     try {
@@ -152,7 +145,6 @@ async function submitTransactionPrivateData(userName: string, contractName: stri
         const tx = contract.createTransaction(contractMethod);
 
         if (privateData != null) {
-            // const buffer = Buffer.from(privateData);
             const privateDataJSON = JSON.parse(privateData);
 
             tx.setTransient({
@@ -161,6 +153,7 @@ async function submitTransactionPrivateData(userName: string, contractName: stri
                 iv: Buffer.from(privateDataJSON.iv)
             });
         }
+        // Submit the transaction to hyperledger
         await tx.submit(...args);
 
         console.log(`Transaction ${tx.getTransactionID} has been submitted`);
@@ -174,12 +167,12 @@ async function submitTransactionPrivateData(userName: string, contractName: stri
 /**
  * Submit a transaction that reads the world state
  */
-async function evaluateTransaction(userName: string, contractName: string, contractMethod: string, args: string[]): Promise<string> {
+async function evaluateTransaction(config: any, userName: string, contractName: string, contractMethod: string, args: string[]): Promise<string> {
     // Connect to the gateway
-    const gateway = await connectToGateway(userName);
+    const gateway = await connectToGateway(userName, config);
 
     // Get the network (channel) our contract is deployed to.
-    const network = await gateway.getNetwork(CHANNEL);
+    const network = await gateway.getNetwork(String(config.channel));
 
     try {
         // Get the contract from the network.

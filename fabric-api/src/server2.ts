@@ -2,7 +2,7 @@ import http from 'http';
 import express from 'express';
 import bodyParser from 'body-parser';
 import logging from './config/logging';
-import config from './config/config';
+import config from './config/config2';
 import invoicesRoute from './routes/invoices';
 import invoiceRoute from './routes/invoice';
 import membersRoute from './routes/members';

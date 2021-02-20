@@ -4,9 +4,6 @@ import constants from '../functions/constants';
 
 const NAMESPACE = 'Invoice';
 
-// Default user for now
-const username = 'org1Admin';
-
 /**
  * Create a new invoice
  */
@@ -25,12 +22,12 @@ const createInvoice = async (req: Request, res: Response, next: NextFunction) =>
         iv: iv
     });
 
-    
+    const username = req.app.locals.config.username;
 
     // Create the invoice
     try {
         // Save on the blockchain
-        await fabricFunctions.submitTransactionPrivateData(username, constants.invoice_contract, 'createInvoice', [invoiceNo, sender, receiver], transientData);
+        await fabricFunctions.submitTransactionPrivateData(req.app.locals.config, username, constants.invoice_contract, 'createInvoice', [invoiceNo, sender, receiver], transientData);
 
         return res.status(200).json({
             message: `created invoice ${invoiceNo}`
@@ -43,9 +40,11 @@ const createInvoice = async (req: Request, res: Response, next: NextFunction) =>
  * Get a list of all invoices
  */
 const readInvoiceList = async (req: Request, res: Response, next: NextFunction) => {
+    const username = req.app.locals.config.username;
+
     // Read the list of invoices
     try {
-        const result = await fabricFunctions.evaluateTransaction(username, constants.invoice_contract, 'GetAllInvoices', []);
+        const result = await fabricFunctions.evaluateTransaction(req.app.locals.config, username, constants.invoice_contract, 'GetAllInvoices', []);
         const listOfInvoices = JSON.parse(result);
         return res.status(200).json({
             listOfInvoices

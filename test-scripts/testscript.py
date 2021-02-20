@@ -3,6 +3,8 @@ import cryptography
 import base64
 import binascii
 import json      
+import os 
+import errno
 
 from pathlib import Path
 
@@ -15,8 +17,9 @@ from Crypto.Cipher import AES
 from Crypto import Random
 from Crypto.Util import Counter
 
-base_url = 'http://localhost:1337'
-target_directory = './key_store'
+
+msp1_base_url = 'http://localhost:1337'
+msp2_base_url = 'http://localhost:2337'
 
 # encrypt any data with aes
 def encrypt_text_with_aes(data):
@@ -71,18 +74,27 @@ def decrypt_text_with_aes(iv, key, ciphertext):
     return plaintext
 
 # enroll a member and keep the private key in memory
-def enroll_member(orgname, file_name):
+def enroll_member(orgname, file_name, base_url):
     request_url = base_url + '/members/enroll/' + orgname
     response = requests.post(request_url)
-    file_path = target_directory + '/' + file_name
+    file_path = file_name
 
     if response.status_code == 200:
         json_result = response.json()
         private_key = json_result['privateKey']
         private_key_bytes = private_key.encode()
 
+        print(base_url, ':', 'Member', orgname, 'enrolled')
+
         if private_key_bytes is not None:
             print('Saving private key to file', file_path)
+
+            if not os.path.exists(os.path.dirname(file_path)):
+                try:
+                    os.makedirs(os.path.dirname(file_path))
+                except OSError as exc: # Guard against race condition
+                    if exc.errno != errno.EEXIST:
+                        raise
 
             with open(file_path, 'wb') as f:
                 f.write(private_key_bytes)
@@ -92,7 +104,7 @@ def enroll_member(orgname, file_name):
         print('GET request on', request_url, 'finished with', response.status_code)
 
 # read a single invoice
-def read_invoice(invoice_key):
+def read_invoice(invoice_key, base_url):
     request_url = base_url + '/invoice/' + invoice_key
     response = requests.get(request_url)
 
@@ -112,12 +124,13 @@ def read_invoice(invoice_key):
         except:
             print('Error reading JSON response')
 
+        print(base_url, ':', 'Invoice', invoice_key, 'received')
         return (invoice, private_data)
     else: 
         print('GET request on', request_url, 'finished with', response.status_code)
 
 # read the list of all invoices
-def read_list_of_invoices():
+def read_list_of_invoices(base_url):
     request_url = base_url + '/invoices/list'
     response = requests.get(request_url)
 
@@ -129,17 +142,20 @@ def read_list_of_invoices():
         print('GET request on', request_url, 'finished with', response.status_code)
 
 # create a new invoice
-def create_invoice(invoice_number, sender, receiver, private_data):
+def create_invoice(invoice_number, sender, receiver, private_data, base_url):
     request_url = base_url + '/invoices/new'
 
     # encrypt the data
-    (key, iv, cipher) = encrypt_text_with_aes(private_data)
+    (key, iv, cipher) = encrypt_text_with_aes(private_data)       
+    print('Encrypted the file using AES')
+
+
     # cipher_plain = cipher.decode('latin-1')
     cipher_b64 = binascii.b2a_base64(cipher).decode('utf-8').strip()
     iv_b64 = binascii.b2a_base64(iv).decode('utf-8').strip()
 
     # encrypt the AES key
-    encrypted_key = encrypt_with_public_key(receiver, key)
+    encrypted_key = encrypt_with_public_key(receiver, key, base_url)
     encrypted_key_b64 = binascii.b2a_base64(encrypted_key).decode('utf-8').strip()
 
     # create the payload
@@ -161,17 +177,19 @@ def create_invoice(invoice_number, sender, receiver, private_data):
     response = requests.post(request_url, data=json.dumps(payload), headers=headers)
     
     if response.status_code == 200:
-        print('Invoice', invoice_number, 'successfully created')
+        print(base_url, ':', 'Invoice', invoice_number, 'created')
     else:
         print('POST request on', request_url, 'finished with', response.status_code)
 
 
 # enrypt with a members key
-def encrypt_with_public_key(orgname, data) -> str:
+def encrypt_with_public_key(orgname, data, base_url) -> str:
     request_url = base_url + '/members/certificate/' + orgname
     response = requests.get(request_url)
 
     if response.status_code == 200:
+        print(base_url, ':', 'Public key for', orgname, 'received')
+
         json_result = response.json()
 
         public_key = json_result['memberKey']
@@ -190,7 +208,7 @@ def encrypt_with_public_key(orgname, data) -> str:
             )
         )
 
-        print('member key for', orgname, 'successfully retrieved')
+        print('Encrypted the AES-Key with public key provided by', orgname)
 
         return encrypted
     else:     
@@ -214,6 +232,8 @@ def decrypt_with_private_key(file_name, encrypted_data) -> str:
                 label=None
             )
         )
+
+        print('Decrypted the AES-Key with private key from file', file_name)
 
         return decrypted_data
 
@@ -242,29 +262,32 @@ def decrypt_private_data(private_data, private_key_file_name):
 
     # decrypt the data
     decrypted_data = decrypt_text_with_aes(iv, decrypted_key, encrypted_data)
+
+    print('Decrypted the file with the AES-Key')
+
     return decrypted_data
 
 
 # create a new organisations 
-def create_organisation(orgname):
-    private_key_file = orgname + '_private_key.pem'
+def create_organisation(orgname, base_url):
+    private_key_file = './' + orgname + '_key_store/' + 'private_key.pem'
 
-    file_name = enroll_member(orgname, private_key_file)
+    file_name = enroll_member(orgname, private_key_file, base_url)
     return file_name
 
 # test case
-def _test_case(sender, receiver, invoice_number):
-    # create both organisations
-    create_organisation(sender)
-    key_file_name = create_organisation(receiver)
-    
-    # if the key file is initial it might already exist
-    if not key_file_name:
-        key_file_name = './key_store/' + receiver + '_private_key.pem'
+def _test_case(sender, sender_url, receiver, receiver_url, invoice_number):
+    # check sender
+    sender_key_file_name = './' + sender + '_key_store/private_key.pem'
+    sender_pem_key_file = Path(sender_key_file_name)
+    if not sender_pem_key_file.is_file():
+        sender_key_file_name = create_organisation(sender, sender_url)
 
-        pem_key_file = Path(key_file_name)
-        if not pem_key_file.is_file():
-            print('No .pem-file with the private key found')
+    # check receiver
+    receiver_key_file_name = './' + receiver + '_key_store/private_key.pem'
+    receiver_pem_key_file = Path(receiver_key_file_name)
+    if not receiver_pem_key_file.is_file():
+        receiver_key_file_name = create_organisation(receiver, receiver_url)
 
     # read the sample xml
     sample_file = Path('./sample_files/Sample-XML-Files.xml')
@@ -274,39 +297,45 @@ def _test_case(sender, receiver, invoice_number):
     sample_file = read_string_from_file('./sample_files/Sample-XML-Files.xml')
 
     # create a new invoice and use the xml as private data
-    create_invoice(invoice_number, sender, receiver, sample_file)
+    create_invoice(invoice_number, sender, receiver, sample_file, sender_url)
 
     # read the file as the receiving organisation
     invoice_key = sender + '_' + receiver + '_' + invoice_number
-    (invoice, private_data) = read_invoice(invoice_key)
+    (invoice, private_data) = read_invoice(invoice_key, receiver_url)
 
     if invoice_key:
-        print('invoice data received')
+        print('Public invoice data received')
     else:
-        print('no invoice data received')
+        print('No public invoice data received')
 
     if private_data:
-        print('private data received')
+        print('Private invoice data received')
 
         # decrypt the private data
-        decrypted_file = decrypt_private_data(private_data, key_file_name)
+        decrypted_file = decrypt_private_data(private_data, receiver_pem_key_file)
 
-        file_path = './files/' + invoice_number + '.xml'
+        # save the decrypted file
+        file_path = './' + receiver + '_files/' + invoice_number + '.xml'
 
-            # save the decrypted file
         if decrypted_file:
+            if not os.path.exists(os.path.dirname(file_path)):
+                try:
+                    os.makedirs(os.path.dirname(file_path))
+                except OSError as exc: # Guard against race condition
+                    if exc.errno != errno.EEXIST:
+                        raise
+
             with open(file_path, 'wb') as f:
                 f.write(decrypted_file)
         
-            print('file successfully encrypted and stored to', file_path)
+            print('File stored to', file_path)
         else:
-            print('no file decrypted')
+            print('No file decrypted')
     else:
-        print('no private data received')
+        print('No private data received')
 
 
-_test_case('Org3', 'Org4', '100028')
+_test_case('Org18', msp1_base_url, 'Org19', msp2_base_url, '100029')
 
-_test_case('Org3', 'Org4', '100027')
 
 

@@ -20,7 +20,14 @@ const SERVER = {
 };
 
 const config = {
-    server: SERVER
+    server: SERVER,
+    connection: 'connection_org1.json',
+    walletpath: '../../Org1Wallet',
+    wallet: 'Org1Wallet',
+    username: 'org1Admin',
+    mspid: 'Org1MSP',
+    admin: 'admin',
+    channel: 'mychannel'
 };
 
-export default config;
+export default { config };
