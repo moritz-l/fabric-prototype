@@ -10,7 +10,7 @@ components:
       newInvoice:
         type: object
         properties:
-          invoiceNo: 
+          invoiceno: 
             type: string
           sender:
             type: string
@@ -18,11 +18,10 @@ components:
             type: string
           encryptedData:
             type: string
-            format: byte
-          randomBytes:
-            description: 
+          key:
             type: string
-            format: byte
+          iv:
+            type: string
       listOfInvoices:
         type: array
         items: 
@@ -48,6 +47,22 @@ components:
         properties:
           status:
             type: string
+      privateData:
+        type: object
+        properties:
+          encryptedData:
+            type: string
+          iv:
+            type: string
+          key:
+            type: string
+      invoiceResponse:
+        type: object
+        properties:
+          invoice:
+            $ref: '#/components/schemas/invoice' 
+          privateData:
+            $ref: '#/components/schemas/privateData' 
   securitySchemes:
     basicAuth:
       type: http
@@ -97,7 +112,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/invoice' 
+                $ref: '#/components/schemas/invoiceResponse' 
     post: 
       description: update an invoice
       parameters:

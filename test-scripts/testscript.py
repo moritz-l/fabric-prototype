@@ -181,6 +181,15 @@ def create_invoice(invoice_number, sender, receiver, private_data, base_url):
     else:
         print('POST request on', request_url, 'finished with', response.status_code)
 
+# delete invoice
+def delete_invoice(invoice_key, base_url):
+    request_url = base_url + '/invoice/' + invoice_key
+    response = requests.delete(request_url)
+
+    if response.status_code == 200:
+        print('invoice', invoice_key, 'deleted')
+    else:
+        print('DELETE request on', request_url, 'finished with', response.status_code)
 
 # enrypt with a members key
 def encrypt_with_public_key(orgname, data, base_url) -> str:
@@ -277,6 +286,8 @@ def create_organisation(orgname, base_url):
 
 # test case
 def _test_case(sender, sender_url, receiver, receiver_url, invoice_number):
+    print('Executing testcase with receiver =', receiver, ', sender =', sender, 'and invoice number =', invoice_number)
+
     # check sender
     sender_key_file_name = './' + sender + '_key_store/private_key.pem'
     sender_pem_key_file = Path(sender_key_file_name)
@@ -335,7 +346,7 @@ def _test_case(sender, sender_url, receiver, receiver_url, invoice_number):
         print('No private data received')
 
 
-_test_case('Org18', msp1_base_url, 'Org19', msp2_base_url, '100029')
+_test_case('Org25', msp1_base_url, 'Org26', msp2_base_url, '100029')
 
 
 
