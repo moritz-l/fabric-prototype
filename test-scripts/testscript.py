@@ -346,7 +346,7 @@ def _test_case(sender, sender_url, receiver, receiver_url, invoice_number):
         print('No private data received')
 
 
-_test_case('Org25', msp1_base_url, 'Org26', msp2_base_url, '100029')
+_test_case('Org29', msp1_base_url, 'Org30', msp2_base_url, '1000291')
 
 
 

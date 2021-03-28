@@ -1,6 +1,6 @@
 {
   "name": "member-contract",
-  "version": "0.0.2",
+  "version": "0.0.9",
   "description": "Contract for membership services",
   "main": "dist/index.js",
   "typings": "dist/index.d.ts",

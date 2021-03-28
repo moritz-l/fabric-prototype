@@ -10,6 +10,9 @@ export class Member {
     public mspId: string;
 
     @Property()
+    public creator: string;
+
+    @Property()
     public name: string
 
     @Property()

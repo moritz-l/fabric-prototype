@@ -15,9 +15,24 @@ export class InvoiceContract extends Contract {
         return (!!buffer && buffer.length > 0);
     }
 
+    @Transaction(false)
+    @Returns('boolean')
+    public async isAuthorized(ctx: Context, invoiceKey: string): Promise<boolean> {
+        // Get the invoice data
+        let buffer = await ctx.stub.getState(invoiceKey.toString());
+        const invoice = JSON.parse(buffer.toString()) as Invoice;
+
+        // Check if the identity submitting the transaction is the current processor
+        let isAuthorized = await (await ctx.stub.invokeChaincode(`member-contract`, [`checkAuthority`, invoice.processor], ctx.stub.getChannelID())).payload.toString('utf8');
+        if (isAuthorized == 'true'){
+            return true
+        } else {
+            return false
+        }
+    }
+
     @Transaction()
     public async createInvoice(ctx: Context, invoiceNumber: string, sender: string, receiver: string): Promise<void> {
-
         // Check if the members submitted as sender and receiver exist
         let memberExists = await (await ctx.stub.invokeChaincode(`member-contract`, [`memberExists`, sender], ctx.stub.getChannelID())).payload.toString('utf8');
         if (memberExists == 'false'){
@@ -29,7 +44,13 @@ export class InvoiceContract extends Contract {
             }
         }
 
-        // Key-creation has to be deterministic to ensure endorsement
+        // Check if the submitter is part of the sending organization
+        let isAuthorized = await (await ctx.stub.invokeChaincode(`member-contract`, [`checkAuthority`, sender], ctx.stub.getChannelID())).payload.toString('utf8');
+        if (isAuthorized != 'true'){
+            throw new Error(`The sender is not authorized to submit invoices for the sending organization ${sender}`);
+        }
+
+        // Key-creation has to be deterministic and unique to ensure endorsement
         const invoiceKey = `${sender}_${receiver}_${invoiceNumber}`;
 
         // Check if key has already been issued
@@ -38,34 +59,37 @@ export class InvoiceContract extends Contract {
             throw new Error(`The invoice ${invoiceKey} already exists`);
         }
 
-        // NOTE: transientData can be read by endorsing peers and is therefore encrypted
+        // NOTE: transientData can be read by endorsing peers
         const transientData = ctx.stub.getTransient();
 
-        // Save transientData to private data collection
-        if (!!transientData){
-            const privateData = new PrivateData();
+        try {
+            // Save transientData to private data collection
+            if (!!transientData){
+                const privateData = new PrivateData();
 
-            // Get the encrypted data
-            privateData.encryptedData = transientData.get('encryptedData').toString('utf8');
+                // Get the encrypted data
+                privateData.encryptedData = transientData.get('encryptedData').toString('utf8');
 
-            // And the random bytes for AES
-            privateData.key = transientData.get('key').toString('utf8');
-            privateData.iv = transientData.get('iv').toString('utf8')
+                // And the random bytes for AES
+                privateData.key = transientData.get('key').toString('utf8');
+                privateData.iv = transientData.get('iv').toString('utf8')
 
-            let response  = await ctx.stub.invokeChaincode(`member-contract`, [`getMemberCollection`, receiver], ctx.stub.getChannelID());
-            let collection = response.payload.toString('utf8');
+                let response  = await ctx.stub.invokeChaincode(`member-contract`, [`getMemberCollection`, receiver], ctx.stub.getChannelID());
+                let collection = response.payload.toString('utf8');
 
-            if(!!collection == false){
-                throw new Error(`Could not determine collection for ${receiver}`);
+                if(!!collection == false){
+                    throw new Error(`Could not determine collection for ${receiver}`);
+                }
+
+                const buffer = Buffer.from(JSON.stringify(privateData));
+                ctx.stub.putPrivateData(collection, invoiceKey.toString(), buffer);
             }
-
-            const buffer = Buffer.from(JSON.stringify(privateData));
-            ctx.stub.putPrivateData(collection, invoiceKey.toString(), buffer);
+        } catch (e) {
+            // Do nothing
         }
 
         // Save the public state of the invoice
         const invoice = new Invoice();
-
         invoice.invoiceNumber = invoiceNumber;
         invoice.sender = sender;
         invoice.processor = invoice.receiver = receiver;
@@ -79,12 +103,13 @@ export class InvoiceContract extends Contract {
     @Transaction(false)
     @Returns('Invoice')
     public async readInvoicePrivateData(ctx: Context, invoiceKey: string): Promise<PrivateData> {
+        // Check existence
         const exists = await this.invoiceExists(ctx, invoiceKey);
         if (!exists) {
             throw new Error(`The invoice ${invoiceKey} does not exist`);
         }
 
-        // Get the invoice data
+        // Get the existing data
         let buffer = await ctx.stub.getState(invoiceKey.toString());
         const invoice = JSON.parse(buffer.toString()) as Invoice;
 
@@ -104,10 +129,12 @@ export class InvoiceContract extends Contract {
     @Transaction(false)
     @Returns('Invoice')
     public async readInvoice(ctx: Context, invoiceKey: string): Promise<Invoice> {
+        // Check existence
         const exists = await this.invoiceExists(ctx, invoiceKey);
         if (!exists) {
             throw new Error(`The invoice ${invoiceKey} does not exist`);
         }
+        // Get the existing data
         const buffer = await ctx.stub.getState(invoiceKey.toString());
         const invoice = JSON.parse(buffer.toString()) as Invoice;
 
@@ -117,15 +144,23 @@ export class InvoiceContract extends Contract {
 
     @Transaction()
     public async rejectInvoice(ctx: Context, invoiceKey: string): Promise<void> {
-
+        // Check existence
         const exists = await this.invoiceExists(ctx, invoiceKey);
         if (!exists) {
             throw new Error(`The invoice ${invoiceKey} does not exist`);
         }
 
+        // Check authority
+        const authorized = await this.isAuthorized(ctx, invoiceKey);
+        if (!authorized) {
+            throw new Error(`Not authorized to update invoice ${invoiceKey}`);
+        }
+
+        // Get the existing data
         let buffer = await ctx.stub.getState(invoiceKey.toString());
         const invoice = JSON.parse(buffer.toString()) as Invoice;
 
+        // Update only possible for status new
         if (invoice.status != `new`){
             throw new Error(`The invoice ${invoiceKey} has status ${invoice.status}`);
         }
@@ -137,15 +172,23 @@ export class InvoiceContract extends Contract {
 
     @Transaction()
     public async acceptInvoice(ctx: Context, invoiceKey: string): Promise<void> {
-
+        // Check existence
         const exists = await this.invoiceExists(ctx, invoiceKey);
         if (!exists) {
             throw new Error(`The invoice ${invoiceKey} does not exist`);
         }
 
+        // Check authority
+        const authorized = await this.isAuthorized(ctx, invoiceKey);
+        if (!authorized) {
+            throw new Error(`Not authorized to update invoice ${invoiceKey}`);
+        }
+
+        // Get the existing data
         let buffer = await ctx.stub.getState(invoiceKey.toString());
         const invoice = JSON.parse(buffer.toString()) as Invoice;
 
+        // Update only possible for status new
         if (invoice.status != `new`){
             throw new Error(`The invoice ${invoiceKey} has status ${invoice.status}`);
         }
@@ -157,11 +200,19 @@ export class InvoiceContract extends Contract {
 
     @Transaction()
     public async deleteInvoice(ctx: Context, invoiceKey: string): Promise<void> {
-
+        // Check existence
         const exists = await this.invoiceExists(ctx, invoiceKey);
         if (!exists) {
             throw new Error(`The invoice ${invoiceKey} does not exist`);
         }
+
+        // Check authority
+        const authorized = await this.isAuthorized(ctx, invoiceKey);
+        if (!authorized) {
+            throw new Error(`Not authorized to update invoice ${invoiceKey}`);
+        }
+
+        // Get the existing data
         let buffer = await ctx.stub.getState(invoiceKey.toString());
         const invoice = JSON.parse(buffer.toString()) as Invoice;
 
@@ -205,6 +256,36 @@ export class InvoiceContract extends Contract {
                     Record = res.value.value.toString('utf8');
                 }
                 allResults.push({ Key, Record });
+            }
+            if (res.done) {
+                console.log('end of data');
+                await iterator.close();
+                console.info(allResults);
+                return JSON.stringify(allResults);
+            }
+        }
+    }
+
+    @Transaction(false)
+    @Returns('string')
+    public async GetHistory(ctx: Context, invoiceKey: string): Promise<string> {
+        const iterator = await ctx.stub.getHistoryForKey(invoiceKey);
+        const allResults = [];
+        while (true) {
+            const res = await iterator.next();
+            if (res.value && res.value.value.toString()) {
+                console.log(res.value.value.toString('utf8'));
+
+                const tx_id = res.value.tx_id;
+                const timestamp = res.value.timestamp;
+                let record;
+                try {
+                    record = JSON.parse(res.value.value.toString('utf8'));
+                } catch (err) {
+                    console.log(err);
+                    record = res.value.value.toString('utf8');
+                }
+                allResults.push({ tx_id, timestamp, record });
             }
             if (res.done) {
                 console.log('end of data');
