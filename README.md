@@ -17,6 +17,8 @@ There are three directories with relevant configuration or coding:
     * [data model](fabric-testnet/smart_contracts/member-contract/src/member.ts)
     * [chaincode](fabric-testnet/smart_contracts/member-contract/src/member-contract.ts)
   * private data [collection-definition](fabric-testnet/private_collections/PrivateCollection.json) 
+* test-scripts
+  * [client-app](test-scripts/testscript.py) 
 
 ## Setup Guide
 1. Following prequesites have to be installed:
