@@ -8,10 +8,10 @@ Currently there are three main directories:
 
 ## Setup Guide
 1. Following prequesites have to be installed:
-  * [Visual Studio Code](https://code.visualstudio.com) 
-  * Version 1.0.40 of the [IBM Blockchain Platform Extension](https://marketplace.visualstudio.com/items?itemName=IBMBlockchain.ibm-blockchain-platform)
-  * npm
-  * nodeman 
+   * [Visual Studio Code](https://code.visualstudio.com) 
+   * Version 1.0.40 of the [IBM Blockchain Platform Extension](https://marketplace.visualstudio.com/items?itemName=IBMBlockchain.ibm-blockchain-platform)
+   * npm
+   * nodeman 
 2. Clone this repository into a directory of your choice
 3. Follow [Tutorial A1](files/a1.pdf) to create a local fabric network
 4. Add the [invoice-contract](fabric-testnet/smart_contracts/invoice-contract) and the [member-contract](fabric-testnet/smart_contracts/member-contract) to your workspace in VS Code. Then follow [Tutorial A3](files/a3.pdf) to deploy the two smart contracts. When instantiating the invoice-contract at step A3.8 choose 'Yes' and provide the [collection-definition](fabric-testnet/private_collections/PrivateCollection.json) file.
