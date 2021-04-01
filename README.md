@@ -7,8 +7,11 @@ Currently there are three main directories:
 - *test-scripts* contains a python script with some very basic tests for the most import functionality
 
 ## Setup Guide
-Prerequisite:
-- [Visual Studio Code](https://code.visualstudio.com)
-- [IBM Blockchain Platform](https://marketplace.visualstudio.com/items?itemName=IBMBlockchain.ibm-blockchain-platform)
+1) Following extensions have to be installed:
+- [Visual Studio Code](https://code.visualstudio.com) 
+- Version 1.0.40 of the [IBM Blockchain Platform Extension](https://marketplace.visualstudio.com/items?itemName=IBMBlockchain.ibm-blockchain-platform) 
 
+2) Clone this repository into a directory of your choice
+
+3) 
 
