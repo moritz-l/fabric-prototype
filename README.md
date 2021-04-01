@@ -13,5 +13,9 @@ Currently there are three main directories:
 
 2) Clone this repository into a directory of your choice
 
-3) 
+3) Follow [Tutorial A1](files/a1.pdf) to create a local fabric network
+
+4) Add the [invoice-contract](fabric-prototype/fabric-testnet/smart_contracts/invoice-contract) and the [member-contract](fabric-prototype/fabric-testnet/smart_contracts/member-contract) to your workspace in VS Code. Then follow [Tutorial A3](files/a3.pdf) to deploy the two smart contracts. When instantiating the invoice-contract at step A3.8 choose 'Yes' and provide the [collection-definition file](fabric-prototype/fabric-testnet/private_collections/PrivateCollection.json).
+
+5) Follow steps A5.1 to A5.5 of tutorial [Tutorial A5](files/a5.pdf) to export the connection profile and wallet for both organisations in the test network.
 
