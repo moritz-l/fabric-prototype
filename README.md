@@ -18,6 +18,6 @@ Currently there are three main directories:
 5) Follow steps A5.1 to A5.5 of tutorial [Tutorial A5](files/a5.pdf) to export the connection profile and wallet for both organisations in the test network.
 6) Replace the wallet for [organisation 1](fabric-api/Org1Wallet/) and [organisation 2](fabric-api/Org2Wallet/) with the previously exported wallets.  
 7) Replace the connection definition for [organisation 1](fabric-prototype/fabric-api/connection_org1.json) and [organisation 2](fabric-api/connection_org2.json)
-8) Navigate to the [Fabric-API directory](fabric-api/) and start the tow servers with nodemon (e.g. nodemon src/server.ts and nodemon src/server2.ts)
+8) Navigate to the [Fabric-API directory](fabric-api/) and start the two servers with nodemon (e.g. nodemon src/server.ts and nodemon src/server2.ts)
 
 
