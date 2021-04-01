@@ -6,6 +6,16 @@ There are three directories with relevant configuration or coding:
 - *fabric-testnet* contains the source code for three smart contracts and a collection definition that has to be provided when instantiating one of the smart contracts on the fabric-network
 - *test-scripts* contains a python script with some very basic tests for the most import functionality
 
+## Quick overview
+* fabric-api
+  * invoice-contract  
+    * [data model](fabric-testnet/smart_contracts/invoice-contract/src/invoice.ts)
+    * [chaincode](fabric-testnet/smart_contracts/invoice-contract/src/invoice-contract.ts)
+  * member-contract
+    * [data model](fabric-testnet/smart_contracts/member-contract/src/member.ts)
+    * [chaincode](fabric-testnet/smart_contracts/member-contract/src/member-contract.ts)
+  * private data [collection-definition](fabric-testnet/private_collections/PrivateCollection.json) 
+
 ## Setup Guide
 1. Following prequesites have to be installed:
    * [Visual Studio Code](https://code.visualstudio.com) 
