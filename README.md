@@ -1,5 +1,5 @@
 # Fabric-Prototype
-This is a basic prototype for the design I created for my master thesis. It's not functional without a correctly configured connection definition and a valid peer-wallet for the API to use with the Fabric-SDK. Additionally there needs to be access to a running fabric peer and a fabric CA, which have to be defined in the connection definition files. A rough guide to setup a testable REST-API is included below.  
+This is a primitive prototype for the design I created for my master thesis. It's not functional without a correctly configured connection definition and a valid peer-wallet for the API to use with the Fabric-SDK. Additionally there needs to be access to a running fabric peer and a fabric CA, which have to be defined in the connection definition files. The express-servers are not deployment ready, which is why you need to have access to dev-tools like npm. A rough guide to setup a testable REST-API is included below.  
 
 There are three directories with relevant configuration or coding:
 - *fabric-api* contains the source code for a REST-API that interacts with a local fabric-peer
