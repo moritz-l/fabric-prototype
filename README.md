@@ -6,8 +6,10 @@ There are three directories with relevant configuration or coding:
 - *fabric-testnet* contains the source code for three smart contracts and a collection definition that has to be provided when instantiating one of the smart contracts on the fabric-network
 - *test-scripts* contains a python script with some very basic tests for the most import functionality
 
-## Quick overview
+## Quick links
 * fabric-api
+  * [API source code](fabric-api/src)
+* fabric-testnet
   * invoice-contract  
     * [data model](fabric-testnet/smart_contracts/invoice-contract/src/invoice.ts)
     * [chaincode](fabric-testnet/smart_contracts/invoice-contract/src/invoice-contract.ts)
