@@ -62,133 +62,254 @@ var __spreadArrays = (this && this.__spreadArrays) || function () {
     return r;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+var FabricCAService = require('fabric-ca-client');
 var fabric_network_1 = require("fabric-network");
 var path = __importStar(require("path"));
-var CHANNEL = 'mychannel';
-var USER = 'org1Admin';
-var WALLET = 'Org1Wallet';
-var MSPID = 'Org1MSP';
-function connectToGateway() {
+/**
+ * Check if the user exists in the wallet
+ */
+function userExists(userName, config) {
     return __awaiter(this, void 0, void 0, function () {
-        var walletPath, wallet, gateway, connectionProfile, connectionOptions;
+        var wallet;
         return __generator(this, function (_a) {
             switch (_a.label) {
-                case 0:
-                    walletPath = path.join(process.cwd(), WALLET);
-                    wallet = new fabric_network_1.FileSystemWallet(walletPath);
-                    console.log("Wallet path: " + walletPath);
-                    gateway = new fabric_network_1.Gateway();
-                    connectionProfile = path.resolve(__dirname, '../..', 'connection.json');
-                    connectionOptions = { wallet: wallet, identity: USER, discovery: { enabled: true, asLocalhost: true } };
-                    return [4 /*yield*/, gateway.connect(connectionProfile, connectionOptions)];
+                case 0: return [4 /*yield*/, getWallet(config)];
                 case 1:
+                    wallet = _a.sent();
+                    return [2 /*return*/, wallet.exists(userName)];
+            }
+        });
+    });
+}
+/**
+ * Connect to the gateway using the connection profile
+ */
+function connectToGateway(userName, config) {
+    return __awaiter(this, void 0, void 0, function () {
+        var wallet, gateway, connectionProfile;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0: return [4 /*yield*/, getWallet(config)];
+                case 1:
+                    wallet = _a.sent();
+                    gateway = new fabric_network_1.Gateway();
+                    connectionProfile = path.resolve(__dirname, '../..', String(config.connection));
+                    // Connect to the peer
+                    return [4 /*yield*/, gateway.connect(connectionProfile, {
+                            wallet: wallet,
+                            identity: userName,
+                            discovery: {
+                                enabled: true,
+                                asLocalhost: true
+                            }
+                        })];
+                case 2:
+                    // Connect to the peer
                     _a.sent();
                     return [2 /*return*/, gateway];
             }
         });
     });
 }
-function submitTransaction(contractName, contractMethod, args, privateData) {
-    if (privateData === void 0) { privateData = ''; }
+/**
+ * getWallet() creates a user in the wallet
+ */
+function getWallet(config) {
     return __awaiter(this, void 0, void 0, function () {
-        var gateway, network, contract, tx, buffer, error_1;
+        var walletPath, wallet;
         return __generator(this, function (_a) {
-            switch (_a.label) {
-                case 0: return [4 /*yield*/, connectToGateway()];
+            walletPath = path.join(process.cwd(), String(config.wallet));
+            wallet = new fabric_network_1.FileSystemWallet(walletPath);
+            console.log("Wallet path: " + walletPath);
+            return [2 /*return*/, wallet];
+        });
+    });
+}
+/**
+ * Creates a user in the wallet
+ */
+function enrollNewUser(userName, config) {
+    return __awaiter(this, void 0, void 0, function () {
+        var wallet, _a, error, gateway, connectionProfile, connectionOptions, fabricCA, registrar, secret, enrollment, userIdentity;
+        return __generator(this, function (_b) {
+            switch (_b.label) {
+                case 0: return [4 /*yield*/, getWallet(config)];
                 case 1:
-                    gateway = _a.sent();
-                    return [4 /*yield*/, gateway.getNetwork(CHANNEL)];
+                    wallet = _b.sent();
+                    _a = true;
+                    return [4 /*yield*/, wallet.exists(userName)];
                 case 2:
-                    network = _a.sent();
-                    _a.label = 3;
+                    // Check if the user exists
+                    if (_a == (_b.sent())) {
+                        error = new Error();
+                        error.message = "A user with  user name " + userName + " already exists";
+                        throw error;
+                    }
+                    gateway = new fabric_network_1.Gateway();
+                    connectionProfile = path.resolve(__dirname, '../..', String(config.connection));
+                    connectionOptions = {
+                        wallet: wallet,
+                        identity: userName,
+                        discovery: {
+                            enabled: true,
+                            asLocalhost: true
+                        }
+                    };
+                    // Connect to the gateway
+                    return [4 /*yield*/, gateway.connect(connectionProfile, connectionOptions)];
                 case 3:
-                    _a.trys.push([3, 5, , 6]);
-                    contract = network.getContract(contractName);
-                    tx = contract.createTransaction(contractMethod);
-                    buffer = Buffer.from(privateData);
-                    tx.setTransient({
-                        private: buffer
-                    });
-                    return [4 /*yield*/, tx.submit.apply(tx, args)];
+                    // Connect to the gateway
+                    _b.sent();
+                    fabricCA = gateway.getClient().getCertificateAuthority();
+                    registrar = gateway.getCurrentIdentity();
+                    return [4 /*yield*/, fabricCA.register({
+                            affiliation: '',
+                            enrollmentID: userName,
+                            role: 'client',
+                            attrs: [
+                                {
+                                    name: 'role',
+                                    value: 'user',
+                                    ecert: true
+                                }
+                            ]
+                        }, registrar)];
                 case 4:
-                    _a.sent();
-                    console.log("Transaction " + tx.getTransactionID + " has been submitted");
-                    return [3 /*break*/, 6];
+                    secret = _b.sent();
+                    return [4 /*yield*/, fabricCA.enroll({
+                            enrollmentID: userName,
+                            enrollmentSecret: secret
+                        })];
                 case 5:
-                    error_1 = _a.sent();
-                    console.log("Successfully caught the error: \n    " + error_1);
-                    return [3 /*break*/, 6];
-                case 6: 
-                // Disconnect from the gateway.
-                return [4 /*yield*/, gateway.disconnect()];
-                case 7:
-                    // Disconnect from the gateway.
-                    _a.sent();
+                    enrollment = _b.sent();
+                    userIdentity = fabric_network_1.X509WalletMixin.createIdentity(String(config.mspid), enrollment.certificate, enrollment.key.toBytes());
+                    return [4 /*yield*/, wallet.import(userName, userIdentity)];
+                case 6:
+                    _b.sent();
                     return [2 /*return*/];
             }
         });
     });
 }
-function evaluateTransaction(contractName, contractMethod, args) {
+/**
+ * Submit a transaction which changes the world state in Hyperledger
+ */
+function submitTransaction(config, userName, contractName, contractMethod, args) {
     return __awaiter(this, void 0, void 0, function () {
-        var gateway, network, contract, result;
+        var gateway, network, contract, tx, error_1;
         return __generator(this, function (_a) {
             switch (_a.label) {
-                case 0: return [4 /*yield*/, connectToGateway()];
+                case 0: return [4 /*yield*/, connectToGateway(userName, config)];
                 case 1:
                     gateway = _a.sent();
-                    return [4 /*yield*/, gateway.getNetwork(CHANNEL)];
+                    return [4 /*yield*/, gateway.getNetwork(String(config.channel))];
                 case 2:
                     network = _a.sent();
+                    _a.label = 3;
+                case 3:
+                    _a.trys.push([3, 6, , 7]);
+                    contract = network.getContract(contractName);
+                    tx = contract.createTransaction(contractMethod);
+                    return [4 /*yield*/, tx.submit.apply(tx, args)];
+                case 4:
+                    _a.sent();
+                    console.log("Transaction " + tx.getTransactionID + " has been submitted");
+                    // Disconnect from the gateway.
+                    return [4 /*yield*/, gateway.disconnect()];
+                case 5:
+                    // Disconnect from the gateway.
+                    _a.sent();
+                    return [3 /*break*/, 7];
+                case 6:
+                    error_1 = _a.sent();
+                    throw error_1;
+                case 7: return [2 /*return*/];
+            }
+        });
+    });
+}
+/**
+ * Accept private data and submit it into the transient store
+ */
+function submitTransactionPrivateData(config, userName, contractName, contractMethod, args, privateData) {
+    return __awaiter(this, void 0, void 0, function () {
+        var gateway, network, contract, tx, privateDataJSON, error_2;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0: return [4 /*yield*/, connectToGateway(userName, config)];
+                case 1:
+                    gateway = _a.sent();
+                    return [4 /*yield*/, gateway.getNetwork(String(config.channel))];
+                case 2:
+                    network = _a.sent();
+                    _a.label = 3;
+                case 3:
+                    _a.trys.push([3, 6, , 7]);
+                    contract = network.getContract(contractName);
+                    tx = contract.createTransaction(contractMethod);
+                    if (privateData != null) {
+                        privateDataJSON = JSON.parse(privateData);
+                        tx.setTransient({
+                            encryptedData: Buffer.from(privateDataJSON.encryptedData),
+                            key: Buffer.from(privateDataJSON.key),
+                            iv: Buffer.from(privateDataJSON.iv)
+                        });
+                    }
+                    // Submit the transaction to hyperledger
+                    return [4 /*yield*/, tx.submit.apply(tx, args)];
+                case 4:
+                    // Submit the transaction to hyperledger
+                    _a.sent();
+                    console.log("Transaction " + tx.getTransactionID + " has been submitted");
+                    // Disconnect from the gateway.
+                    return [4 /*yield*/, gateway.disconnect()];
+                case 5:
+                    // Disconnect from the gateway.
+                    _a.sent();
+                    return [3 /*break*/, 7];
+                case 6:
+                    error_2 = _a.sent();
+                    throw error_2;
+                case 7: return [2 /*return*/];
+            }
+        });
+    });
+}
+/**
+ * Submit a transaction that reads the world state
+ */
+function evaluateTransaction(config, userName, contractName, contractMethod, args) {
+    return __awaiter(this, void 0, void 0, function () {
+        var gateway, network, contract, result, error_3;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0: return [4 /*yield*/, connectToGateway(userName, config)];
+                case 1:
+                    gateway = _a.sent();
+                    return [4 /*yield*/, gateway.getNetwork(String(config.channel))];
+                case 2:
+                    network = _a.sent();
+                    _a.label = 3;
+                case 3:
+                    _a.trys.push([3, 6, , 7]);
                     contract = network.getContract(contractName);
                     return [4 /*yield*/, contract.evaluateTransaction.apply(contract, __spreadArrays([contractMethod], args))];
-                case 3:
+                case 4:
                     result = _a.sent();
                     console.log('Transaction has been evaluated');
                     // Disconnect from the gateway.
                     return [4 /*yield*/, gateway.disconnect()];
-                case 4:
+                case 5:
                     // Disconnect from the gateway.
                     _a.sent();
                     // Return the result
                     return [2 /*return*/, result.toString('utf8')];
+                case 6:
+                    error_3 = _a.sent();
+                    throw error_3;
+                case 7: return [2 /*return*/];
             }
         });
     });
 }
-function submitTransactionOffline(contractName, contractMethod, args, privateData) {
-    if (privateData === void 0) { privateData = ''; }
-    return __awaiter(this, void 0, void 0, function () {
-        var gateway, network, channel, certificate, transactionProposalReq, unsignedProposal, error_2;
-        return __generator(this, function (_a) {
-            switch (_a.label) {
-                case 0: return [4 /*yield*/, connectToGateway()];
-                case 1:
-                    gateway = _a.sent();
-                    return [4 /*yield*/, gateway.getNetwork(CHANNEL)];
-                case 2:
-                    network = _a.sent();
-                    channel = network.getChannel();
-                    certificate = '-----BEGIN CERTIFICATE-----\nMIICvTCCAmSgAwIBAgIUNgegYAP7ykGdNiI4Pdvv+gTI4PEwCgYIKoZIzj0EAwIw\nfzELMAkGA1UEBhMCVVMxEzARBgNVBAgTCkNhbGlmb3JuaWExFjAUBgNVBAcTDVNh\nbiBGcmFuY2lzY28xHzAdBgNVBAoTFkludGVybmV0IFdpZGdldHMsIEluYy4xDDAK\nBgNVBAsTA1dXVzEUMBIGA1UEAxMLZXhhbXBsZS5jb20wHhcNMjEwMjAyMTUzMTAw\nWhcNMjExMDExMTkzMTAwWjBhMQswCQYDVQQGEwJVUzEXMBUGA1UECBMOTm9ydGgg\nQ2Fyb2xpbmExFDASBgNVBAoTC0h5cGVybGVkZ2VyMQ8wDQYDVQQLEwZjbGllbnQx\nEjAQBgNVBAMTCW9yZzFBZG1pbjBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABNmu\nyO7fX5aQCFi1nGvjQ1dLd1QKjGh0O/PJQPAwF5MspK7ggTxxAdqIM3ABoSkMCiem\nBaCPZ8HOXLaAoOHD2N+jgdswgdgwDgYDVR0PAQH/BAQDAgeAMAwGA1UdEwEB/wQC\nMAAwHQYDVR0OBBYEFPoSMN5tmLw5FcpfmT4qOjC4D3mpMB8GA1UdIwQYMBaAFBdn\nQj2qnoI/xMUdn1vDmdG1nEgQMBoGA1UdEQQTMBGCD21vcml0ei10aGlua3BhZDBc\nBggqAwQFBgcIAQRQeyJhdHRycyI6eyJoZi5BZmZpbGlhdGlvbiI6IiIsImhmLkVu\ncm9sbG1lbnRJRCI6Im9yZzFBZG1pbiIsImhmLlR5cGUiOiJjbGllbnQifX0wCgYI\nKoZIzj0EAwIDRwAwRAIgFwiQFvl4v2mVoMFwR/6CzRtumfBQqj/spJ5gn4H2WNQC\nIHh5wffK37LG8ETYmlurokEoDzWzq7mnot+dAaeXoiNM\n-----END CERTIFICATE-----';
-                    _a.label = 3;
-                case 3:
-                    _a.trys.push([3, 5, , 6]);
-                    transactionProposalReq = {
-                        fcn: contractMethod,
-                        args: args,
-                        chaincodeId: contractName,
-                        channelId: CHANNEL
-                    };
-                    return [4 /*yield*/, channel.generateUnsignedProposal(transactionProposalReq, MSPID, certificate, false)];
-                case 4:
-                    unsignedProposal = _a.sent();
-                    return [3 /*break*/, 6];
-                case 5:
-                    error_2 = _a.sent();
-                    return [3 /*break*/, 6];
-                case 6: return [2 /*return*/];
-            }
-        });
-    });
-}
-exports.default = { evaluateTransaction: evaluateTransaction, submitTransaction: submitTransaction };
+exports.default = { evaluateTransaction: evaluateTransaction, submitTransaction: submitTransaction, enrollNewUser: enrollNewUser, userExists: userExists, submitTransactionPrivateData: submitTransactionPrivateData };

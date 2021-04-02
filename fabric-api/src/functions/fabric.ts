@@ -141,7 +141,6 @@ async function submitTransactionPrivateData(config: any, userName: string, contr
     // Get the contract from the network
     try {
         const contract = network.getContract(contractName);
-
         const tx = contract.createTransaction(contractMethod);
 
         if (privateData != null) {

@@ -6,5 +6,5 @@ var express_1 = __importDefault(require("express"));
 var invoices_1 = __importDefault(require("../controllers/invoices"));
 var router = express_1.default.Router();
 router.get('/list', invoices_1.default.readInvoiceList);
-router.put('/new', invoices_1.default.createInvoice);
+router.post('/new', invoices_1.default.createInvoice);
 module.exports = router;

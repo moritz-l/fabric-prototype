@@ -5,6 +5,8 @@ import binascii
 import json      
 import os 
 import errno
+import sys
+import inspect
 
 from pathlib import Path
 
@@ -20,6 +22,12 @@ from Crypto.Util import Counter
 
 msp1_base_url = 'http://localhost:1337'
 msp2_base_url = 'http://localhost:2337'
+
+def xprint(*args):
+    # for logging purposes
+    calling_function = inspect.stack()[1].function
+    # print( '[' + calling_function + ']              ' +" ".join(map(str,args)))
+    print(f"{'[' + calling_function + ']:':<30}{''.join(map(str,args)):<40}")
 
 # encrypt any data with aes
 def encrypt_text_with_aes(data):
@@ -75,20 +83,26 @@ def decrypt_text_with_aes(iv, key, ciphertext):
 
 # enroll a member and keep the private key in memory
 def enroll_member(orgname, file_name, base_url):
+    xprint('Enrolling member ', orgname)
+
+    # Enroll the member
     request_url = base_url + '/members/enroll/' + orgname
     response = requests.post(request_url)
     file_path = file_name
 
     if response.status_code == 200:
+
+        # Get the result (private key)
         json_result = response.json()
         private_key = json_result['privateKey']
         private_key_bytes = private_key.encode()
 
-        print(base_url, ':', 'Member', orgname, 'enrolled')
+        xprint(base_url, ' :', 'Member ', orgname, ' enrolled')
 
         if private_key_bytes is not None:
-            print('Saving private key to file', file_path)
+            xprint('Saving private key to file ', file_path)
 
+            # Save to file
             if not os.path.exists(os.path.dirname(file_path)):
                 try:
                     os.makedirs(os.path.dirname(file_path))
@@ -101,10 +115,13 @@ def enroll_member(orgname, file_name, base_url):
 
             return file_path
     else: 
-        print('GET request on', request_url, 'finished with', response.status_code)
+        xprint('POST request on ', request_url, ' finished with ', response.status_code)
 
 # read a single invoice
 def read_invoice(invoice_key, base_url):
+    xprint('Reading invoice ', invoice_key)
+
+    # Read the invoice
     request_url = base_url + '/invoice/' + invoice_key
     response = requests.get(request_url)
 
@@ -122,32 +139,87 @@ def read_invoice(invoice_key, base_url):
                 private_data = json_result['privateData']
 
         except:
-            print('Error reading JSON response')
+            xprint('Error reading JSON response')
 
-        print(base_url, ':', 'Invoice', invoice_key, 'received')
+        xprint(base_url, ':', 'Invoice', invoice_key, 'received')
         return (invoice, private_data)
     else: 
-        print('GET request on', request_url, 'finished with', response.status_code)
+        xprint('GET request on ', request_url, ' finished with ', response.status_code)
+
+# accept a single invoice
+def accept_invoice(invoice_key, base_url):
+    xprint('Accepting invoice ', invoice_key)
+
+    request_url = base_url + '/invoice/' + invoice_key
+
+    # create the payload
+    payload = {
+        'status': 'accepted'
+    }
+
+    # create the header
+    headers = {
+        'content-type': 'application/json'
+    }
+
+    # send the request
+    response = requests.post(request_url, data=json.dumps(payload), headers=headers)
+
+    # accept the invoice
+    if response.status_code == 200:
+        xprint(base_url, ':', ' Invoice ', invoice_key, ' accepted')
+    else:
+        xprint('POST request on ', request_url, ' finished with ', response.status_code)
+
+# reject a single invoice
+def reject_invoice(invoice_key, base_url):
+    xprint('Rejecting invoice ', invoice_key)
+
+    request_url = base_url + '/invoice/' + invoice_key
+
+    # create the payload
+    payload = {
+        'status': 'rejected'
+    }
+
+    # create the header
+    headers = {
+        'content-type': 'application/json'
+    }
+
+    # send the request
+    response = requests.post(request_url, data=json.dumps(payload), headers=headers)
+
+    # accept the invoice
+    if response.status_code == 200:
+        xprint(base_url, ':', ' Invoice ', invoice_key, ' rejected')
+    else:
+        xprint('POST request on ', request_url, ' finished with ', response.status_code)
 
 # read the list of all invoices
 def read_list_of_invoices(base_url):
+    xprint('Reading list of invoices')
+
     request_url = base_url + '/invoices/list'
     response = requests.get(request_url)
 
     if response.status_code == 200:
         json_result = response.json()
+        xprint(base_url, ':', ' Read list of invoices')
         return json_result
 
     else: 
-        print('GET request on', request_url, 'finished with', response.status_code)
+        xprint('GET request on ', request_url, ' finished with ', response.status_code)
 
 # create a new invoice
 def create_invoice(invoice_number, sender, receiver, private_data, base_url):
+    xprint('Creating invoice ', invoice_number)
+
     request_url = base_url + '/invoices/new'
 
     # encrypt the data
     (key, iv, cipher) = encrypt_text_with_aes(private_data)       
-    print('Encrypted the file using AES')
+    xprint('Encrypted the file using AES')
 
 
     # cipher_plain = cipher.decode('latin-1')
@@ -177,27 +249,31 @@ def create_invoice(invoice_number, sender, receiver, private_data, base_url):
     response = requests.post(request_url, data=json.dumps(payload), headers=headers)
     
     if response.status_code == 200:
-        print(base_url, ':', 'Invoice', invoice_number, 'created')
+        xprint(base_url, ':', ' Invoice ', invoice_number, ' created')
     else:
-        print('POST request on', request_url, 'finished with', response.status_code)
+        xprint('POST request on ', request_url, ' finished with ', response.status_code)
 
 # delete invoice
 def delete_invoice(invoice_key, base_url):
+    xprint('Deleting invoice ', invoice_key)
+
     request_url = base_url + '/invoice/' + invoice_key
     response = requests.delete(request_url)
 
     if response.status_code == 200:
-        print('invoice', invoice_key, 'deleted')
+        xprint('Invoice ', invoice_key, ' deleted')
     else:
-        print('DELETE request on', request_url, 'finished with', response.status_code)
+        xprint('DELETE request on ', request_url, ' finished with ', response.status_code)
 
 # enrypt with a members key
 def encrypt_with_public_key(orgname, data, base_url) -> str:
+    xprint('Encrypting with public key')
+
     request_url = base_url + '/members/certificate/' + orgname
     response = requests.get(request_url)
 
     if response.status_code == 200:
-        print(base_url, ':', 'Public key for', orgname, 'received')
+        xprint(base_url, ':', ' Public key for ', orgname, ' received')
 
         json_result = response.json()
 
@@ -217,14 +293,16 @@ def encrypt_with_public_key(orgname, data, base_url) -> str:
             )
         )
 
-        print('Encrypted the AES-Key with public key provided by', orgname)
+        xprint('Encrypted the AES-Key with public key provided by ', orgname)
 
         return encrypted
     else:     
-        print('GET request on', request_url, 'finished with', response.status_code)
+        xprint('GET request on ', request_url, ' finished with ', response.status_code)
 
 # decrypt with a private key file
 def decrypt_with_private_key(file_name, encrypted_data) -> str:
+    xprint('Decrypting with private key')
+
     try:
         with open(file_name, 'rb') as private_key_file:
             private_key_serialized = serialization.load_pem_private_key(
@@ -242,12 +320,12 @@ def decrypt_with_private_key(file_name, encrypted_data) -> str:
             )
         )
 
-        print('Decrypted the AES-Key with private key from file', file_name)
+        xprint('Decrypted the AES-Key with private key from file ', file_name)
 
         return decrypted_data
 
     except IOError:
-        print('Error when reading file', file_name)
+        xprint('Error when reading file ', file_name)
 
 # read a file into a string
 def read_string_from_file(file_name):
@@ -272,21 +350,23 @@ def decrypt_private_data(private_data, private_key_file_name):
     # decrypt the data
     decrypted_data = decrypt_text_with_aes(iv, decrypted_key, encrypted_data)
 
-    print('Decrypted the file with the AES-Key')
+    xprint('Decrypted the file with the AES-Key')
 
     return decrypted_data
 
 
 # create a new organisations 
 def create_organisation(orgname, base_url):
+    xprint('Creating organisation ', orgname)
+
     private_key_file = './' + orgname + '_key_store/' + 'private_key.pem'
 
     file_name = enroll_member(orgname, private_key_file, base_url)
     return file_name
 
-# test case
-def _test_case(sender, sender_url, receiver, receiver_url, invoice_number):
-    print('Executing testcase with receiver =', receiver, ', sender =', sender, 'and invoice number =', invoice_number)
+# test case 1 -> create two new organisations and transfer a file between them
+def _test_case_1(sender, sender_url, receiver, receiver_url, invoice_number):
+    xprint('Executing testcase 1 with receiver = ', receiver, ', sender = ', sender, ' and invoice number = ', invoice_number)
 
     # check sender
     sender_key_file_name = './' + sender + '_key_store/private_key.pem'
@@ -303,7 +383,7 @@ def _test_case(sender, sender_url, receiver, receiver_url, invoice_number):
     # read the sample xml
     sample_file = Path('./sample_files/Sample-XML-Files.xml')
     if not sample_file.is_file():
-        print('No sample file found')
+        xprint('No sample file found')
 
     sample_file = read_string_from_file('./sample_files/Sample-XML-Files.xml')
 
@@ -314,13 +394,13 @@ def _test_case(sender, sender_url, receiver, receiver_url, invoice_number):
     invoice_key = sender + '_' + receiver + '_' + invoice_number
     (invoice, private_data) = read_invoice(invoice_key, receiver_url)
 
-    if invoice_key:
-        print('Public invoice data received')
+    if invoice:
+        xprint('Public invoice data received')
     else:
-        print('No public invoice data received')
+        xprint('No public invoice data received')
 
     if private_data:
-        print('Private invoice data received')
+        xprint('Private invoice data received')
 
         # decrypt the private data
         decrypted_file = decrypt_private_data(private_data, receiver_pem_key_file)
@@ -339,14 +419,88 @@ def _test_case(sender, sender_url, receiver, receiver_url, invoice_number):
             with open(file_path, 'wb') as f:
                 f.write(decrypted_file)
         
-            print('File stored to', file_path)
+            xprint('File stored to', file_path)
         else:
-            print('No file decrypted')
+            xprint('No file decrypted')
     else:
-        print('No private data received')
+        xprint('No private data received')
+    
+    # try to accept as the sending organisation -> should fail
+    try:
+        accept_invoice(invoice_key, sender_url)
+    except Exception as e:
+        raise e
+
+    # try to accept as the receiving organisation -> should succeed
+    try:
+        accept_invoice(invoice_key, receiver_url) 
+        xprint('Invoice ',invoice_key, ' accepted by member ', receiver)
+    except Exception as e:
+        raise e
+
+# test case 2 -> create two new organisations and transfer a file between them
+def _test_case_2(receiver, receiver_url):
+    # get all relevant invoices
+    list_of_results = read_list_of_invoices(receiver_url)
+
+    # load the key
+    receiver_key_file_name = './' + receiver + '_key_store/private_key.pem'
+    receiver_pem_key_file = Path(receiver_key_file_name)
+    if not receiver_pem_key_file.is_file():
+        xprint('No key file found')
 
 
-_test_case('Org29', msp1_base_url, 'Org30', msp2_base_url, '1000291')
+    for item in list_of_results['listOfInvoices']:
+        record = item['Record']
+
+        # if the organisation matches the receiver in fabric
+        if (record['receiver'] == receiver):   
+            (invoice, private_data) = read_invoice(item['Key'], receiver_url)
+            if invoice:
+                xprint('Public invoice data for invoice ', record['invoiceNumber'], ' received')
+            else:
+                xprint('No public invoice data received')
+
+            if private_data:
+                xprint('Private invoice data for invoice ', record['invoiceNumber'], ' received')
+
+                # decrypt the private data
+                decrypted_file = decrypt_private_data(private_data, receiver_pem_key_file)
+
+                # save the decrypted file
+                file_path = './' + receiver + '_files/' + record['invoiceNumber'] + '.xml'
+
+                if decrypted_file:
+                    if not os.path.exists(os.path.dirname(file_path)):
+                        try:
+                            os.makedirs(os.path.dirname(file_path))
+                        except OSError as exc: # Guard against race condition
+                            if exc.errno != errno.EEXIST:
+                                raise
+
+                    with open(file_path, 'wb') as f:
+                        f.write(decrypted_file)
+        
+                    xprint('File stored to', file_path)
+                else:
+                    xprint('No file decrypted')
+            else:
+                xprint('No private data received for invoice ', record['invoiceNumber'])
+
+        # try to accept as the receiving organisation -> should succeed
+        try:
+            accept_invoice(item['Key'], receiver_url) 
+            xprint('Invoice ', item['Key'], ' accepted by member ', receiver)
+        except Exception as e:
+            raise e
+
+try: 
+    if (sys.argv[1] == '1'): 
+        _test_case_1(sys.argv[2], msp1_base_url, sys.argv[3], msp2_base_url, sys.argv[4])
+    elif (sys.argv[1] == '2'):
+        _test_case_2(sys.argv[2], msp2_base_url)
+except Exception as e:
+    xprint('Exception:', e)
 
 
 

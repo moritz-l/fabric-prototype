@@ -40,28 +40,38 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 var fabric_1 = __importDefault(require("../functions/fabric"));
+var constants_1 = __importDefault(require("../functions/constants"));
+/**
+ * Delete an invoice
+ */
 var deleteInvoice = function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
-    var error_1;
+    var username, error_1;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
-                _a.trys.push([0, 2, , 3]);
-                return [4 /*yield*/, fabric_1.default.submitTransaction('invoice2-contract', 'deleteInvoice', [req.params.invoiceId])];
+                username = req.app.locals.config.username;
+                _a.label = 1;
             case 1:
+                _a.trys.push([1, 3, , 4]);
+                return [4 /*yield*/, fabric_1.default.submitTransaction(req.app.locals.config, username, constants_1.default.invoice_contract, 'deleteInvoice', [req.params.invoiceId])];
+            case 2:
                 _a.sent();
                 return [2 /*return*/, res.status(200).json({
                         message: "deleted invoice " + req.params.invoiceId
                     })];
-            case 2:
+            case 3:
                 error_1 = _a.sent();
                 next(error_1);
-                return [3 /*break*/, 3];
-            case 3: return [2 /*return*/];
+                return [3 /*break*/, 4];
+            case 4: return [2 /*return*/];
         }
     });
 }); };
+/**
+ * Update an invoice
+ */
 var updateInvoice = function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
-    var status, _a, error_2;
+    var status, username, _a, error_2;
     return __generator(this, function (_b) {
         switch (_b.label) {
             case 0:
@@ -71,6 +81,7 @@ var updateInvoice = function (req, res, next) { return __awaiter(void 0, void 0,
                             message: "no status provided for invoice " + req.params.invoiceId
                         })];
                 }
+                username = req.app.locals.config.username;
                 _b.label = 1;
             case 1:
                 _b.trys.push([1, 8, , 9]);
@@ -80,11 +91,11 @@ var updateInvoice = function (req, res, next) { return __awaiter(void 0, void 0,
                     case 'accepted': return [3 /*break*/, 4];
                 }
                 return [3 /*break*/, 6];
-            case 2: return [4 /*yield*/, fabric_1.default.submitTransaction('invoice2-contract', 'rejectInvoice', [req.params.invoiceId])];
+            case 2: return [4 /*yield*/, fabric_1.default.submitTransaction(req.app.locals.config, username, constants_1.default.invoice_contract, 'rejectInvoice', [req.params.invoiceId])];
             case 3:
                 _b.sent();
                 _b.label = 4;
-            case 4: return [4 /*yield*/, fabric_1.default.submitTransaction('invoice2-contract', 'acceptInvoice', [req.params.invoiceId])];
+            case 4: return [4 /*yield*/, fabric_1.default.submitTransaction(req.app.locals.config, username, constants_1.default.invoice_contract, 'acceptInvoice', [req.params.invoiceId])];
             case 5:
                 _b.sent();
                 _b.label = 6;
@@ -103,29 +114,52 @@ var updateInvoice = function (req, res, next) { return __awaiter(void 0, void 0,
         }
     });
 }); };
+/**
+ * Read an invoice
+ */
 var readInvoice = function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
-    var result, privateResult, invoice, privateData, error_3;
+    var username, invoice, privateResult, error_3, error_4;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
-                _a.trys.push([0, 3, , 4]);
-                return [4 /*yield*/, fabric_1.default.evaluateTransaction('invoice2-contract', 'readInvoice', [req.params.invoiceId])];
-            case 1:
-                result = _a.sent();
-                return [4 /*yield*/, fabric_1.default.evaluateTransaction('invoice2-contract', 'readInvoicePrivateData', [req.params.invoiceId])];
-            case 2:
-                privateResult = _a.sent();
-                invoice = JSON.parse(result);
-                privateData = JSON.parse(privateResult);
+                username = req.app.locals.config.username;
                 return [2 /*return*/, res.status(200).json({
-                        invoice: invoice,
-                        privateData: privateData
+                        test: 'sdälfäsd'
                     })];
+            case 1:
+                _a.trys.push([1, 7, , 8]);
+                return [4 /*yield*/, fabric_1.default.evaluateTransaction(req.app.locals.config, username, constants_1.default.invoice_contract, 'readInvoice', [req.params.invoiceId])];
+            case 2:
+                invoice = _a.sent();
+                privateResult = void 0;
+                _a.label = 3;
             case 3:
+                _a.trys.push([3, 5, , 6]);
+                return [4 /*yield*/, fabric_1.default.evaluateTransaction(req.app.locals.config, username, constants_1.default.invoice_contract, 'readInvoicePrivateData', [req.params.invoiceId])];
+            case 4:
+                privateResult = _a.sent();
+                return [3 /*break*/, 6];
+            case 5:
                 error_3 = _a.sent();
-                next(error_3);
-                return [3 /*break*/, 4];
-            case 4: return [2 /*return*/];
+                return [3 /*break*/, 6];
+            case 6:
+                if (!privateResult) {
+                    return [2 /*return*/, res.status(200).json({
+                            invoice: JSON.parse(invoice)
+                        })];
+                }
+                else {
+                    return [2 /*return*/, res.status(200).json({
+                            invoice: JSON.parse(invoice),
+                            privateData: JSON.parse(privateResult)
+                        })];
+                }
+                return [3 /*break*/, 8];
+            case 7:
+                error_4 = _a.sent();
+                next(error_4);
+                return [3 /*break*/, 8];
+            case 8: return [2 /*return*/];
         }
     });
 }); };

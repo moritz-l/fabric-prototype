@@ -59,7 +59,11 @@ const readInvoice = async (req: Request, res: Response, next: NextFunction) => {
 
     try {
         const invoice = await fabricFunctions.evaluateTransaction(req.app.locals.config, username, constants.invoice_contract, 'readInvoice', [req.params.invoiceId]);
-        const privateResult = await fabricFunctions.evaluateTransaction(req.app.locals.config, username, constants.invoice_contract, 'readInvoicePrivateData', [req.params.invoiceId]);
+
+        let privateResult;
+        try {
+            privateResult = await fabricFunctions.evaluateTransaction(req.app.locals.config, username, constants.invoice_contract, 'readInvoicePrivateData', [req.params.invoiceId]);
+        } catch (error) {}
 
         if (!privateResult) {
             return res.status(200).json({

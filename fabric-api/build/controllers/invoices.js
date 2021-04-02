@@ -40,25 +40,38 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 var fabric_1 = __importDefault(require("../functions/fabric"));
+var constants_1 = __importDefault(require("../functions/constants"));
+var NAMESPACE = 'Invoice';
+/**
+ * Create a new invoice
+ */
 var createInvoice = function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
-    var invoice, error_1;
+    var invoiceNo, sender, receiver, encryptedData, key, iv, transientData, username, error_1;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
-                invoice = {
-                    invoiceNo: req.body.invoiceNo,
-                    sender: req.body.sender,
-                    receiver: req.body.receiver,
-                    privateData: req.body.privateData
-                };
+                invoiceNo = req.body.invoiceno;
+                sender = req.body.sender;
+                receiver = req.body.receiver;
+                encryptedData = req.body.encryptedData;
+                key = req.body.key;
+                iv = req.body.iv;
+                transientData = JSON.stringify({
+                    encryptedData: encryptedData,
+                    key: key,
+                    iv: iv
+                });
+                username = req.app.locals.config.username;
                 _a.label = 1;
             case 1:
                 _a.trys.push([1, 3, , 4]);
-                return [4 /*yield*/, fabric_1.default.submitTransaction('invoice2-contract', 'createInvoice', [invoice.invoiceNo, invoice.sender, invoice.receiver], invoice.privateData)];
+                // Save on the blockchain
+                return [4 /*yield*/, fabric_1.default.submitTransactionPrivateData(req.app.locals.config, username, constants_1.default.invoice_contract, 'createInvoice', [invoiceNo, sender, receiver], transientData)];
             case 2:
+                // Save on the blockchain
                 _a.sent();
                 return [2 /*return*/, res.status(200).json({
-                        message: "created invoice " + invoice.invoiceNo
+                        message: "created invoice " + invoiceNo
                     })];
             case 3:
                 error_1 = _a.sent();
@@ -68,24 +81,30 @@ var createInvoice = function (req, res, next) { return __awaiter(void 0, void 0,
         }
     });
 }); };
+/**
+ * Get a list of all invoices
+ */
 var readInvoiceList = function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
-    var result, listOfInvoices, error_2;
+    var username, result, listOfInvoices, error_2;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
-                _a.trys.push([0, 2, , 3]);
-                return [4 /*yield*/, fabric_1.default.evaluateTransaction('invoice2-contract', 'GetAllInvoices', [])];
+                username = req.app.locals.config.username;
+                _a.label = 1;
             case 1:
+                _a.trys.push([1, 3, , 4]);
+                return [4 /*yield*/, fabric_1.default.evaluateTransaction(req.app.locals.config, username, constants_1.default.invoice_contract, 'GetAllInvoices', [])];
+            case 2:
                 result = _a.sent();
                 listOfInvoices = JSON.parse(result);
                 return [2 /*return*/, res.status(200).json({
                         listOfInvoices: listOfInvoices
                     })];
-            case 2:
+            case 3:
                 error_2 = _a.sent();
                 next(error_2);
-                return [3 /*break*/, 3];
-            case 3: return [2 /*return*/];
+                return [3 /*break*/, 4];
+            case 4: return [2 /*return*/];
         }
     });
 }); };

@@ -1,4 +1,23 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -40,24 +59,71 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 var fabric_1 = __importDefault(require("../functions/fabric"));
+var constants_1 = __importDefault(require("../functions/constants"));
+var crypto = __importStar(require("crypto"));
+/**
+ * Read the members public key from Hyperledger
+ */
 var readMemberCertificate = function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
-    var memberKey, error_1;
+    var username, memberKey, error_1;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
-                _a.trys.push([0, 2, , 3]);
-                return [4 /*yield*/, fabric_1.default.evaluateTransaction('member2_contract', 'getMemberPublicKey', [req.params.memberId])];
+                username = req.app.locals.config.username;
+                _a.label = 1;
             case 1:
+                _a.trys.push([1, 3, , 4]);
+                return [4 /*yield*/, fabric_1.default.evaluateTransaction(req.app.locals.config, username, constants_1.default.member_contract, 'getMemberPublicKey', [req.params.memberId])];
+            case 2:
                 memberKey = _a.sent();
                 return [2 /*return*/, res.status(200).json({
                         memberKey: memberKey
                     })];
-            case 2:
+            case 3:
                 error_1 = _a.sent();
                 next(error_1);
-                return [3 /*break*/, 3];
-            case 3: return [2 /*return*/];
+                return [3 /*break*/, 4];
+            case 4: return [2 /*return*/];
         }
     });
 }); };
-exports.default = { readMemberCertificate: readMemberCertificate };
+/**
+ * Enroll a member in hyperledger
+ */
+var enrollAsMember = function (req, res, next) { return __awaiter(void 0, void 0, void 0, function () {
+    var username, memberId, _a, publicKey, privateKey, error_2;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
+            case 0:
+                username = req.app.locals.config.username;
+                _b.label = 1;
+            case 1:
+                _b.trys.push([1, 3, , 4]);
+                memberId = req.params.memberId;
+                _a = crypto.generateKeyPairSync('rsa', {
+                    modulusLength: 2048,
+                    publicKeyEncoding: {
+                        type: 'pkcs1',
+                        format: 'pem'
+                    },
+                    privateKeyEncoding: {
+                        type: 'pkcs1',
+                        format: 'pem'
+                    }
+                }), publicKey = _a.publicKey, privateKey = _a.privateKey;
+                return [4 /*yield*/, fabric_1.default.submitTransaction(req.app.locals.config, username, constants_1.default.member_contract, 'enrollMember', [memberId, publicKey])];
+            case 2:
+                _b.sent();
+                return [2 /*return*/, res.status(200).json({
+                        message: "Member " + memberId + " has been successfully enrolled. Please save the private key!",
+                        privateKey: Buffer.from(privateKey, 'utf8').toString()
+                    })];
+            case 3:
+                error_2 = _b.sent();
+                next(error_2);
+                return [3 /*break*/, 4];
+            case 4: return [2 /*return*/];
+        }
+    });
+}); };
+exports.default = { readMemberCertificate: readMemberCertificate, enrollAsMember: enrollAsMember };

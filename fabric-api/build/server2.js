@@ -7,7 +7,7 @@ var http_1 = __importDefault(require("http"));
 var express_1 = __importDefault(require("express"));
 var body_parser_1 = __importDefault(require("body-parser"));
 var logging_1 = __importDefault(require("./config/logging"));
-var config_1 = __importDefault(require("./config/config"));
+var config2_1 = __importDefault(require("./config/config2"));
 var invoices_1 = __importDefault(require("./routes/invoices"));
 var invoice_1 = __importDefault(require("./routes/invoice"));
 var members_1 = __importDefault(require("./routes/members"));
@@ -56,6 +56,6 @@ router.use(function (req, res, next) {
     next();
 });
 // Create the server
-router.locals.config = config_1.default.config;
+router.locals.config = config2_1.default.config;
 var httpServer = http_1.default.createServer(router);
-httpServer.listen(config_1.default.config.server.port, function () { return logging_1.default.info(NAMESPACE, "Server running on " + config_1.default.config.server.hostname + ":" + config_1.default.config.server.port); });
+httpServer.listen(config2_1.default.config.server.port, function () { return logging_1.default.info(NAMESPACE, "Server running on " + config2_1.default.config.server.hostname + ":" + config2_1.default.config.server.port); });
