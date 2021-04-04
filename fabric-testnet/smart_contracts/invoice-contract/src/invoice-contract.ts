@@ -31,6 +31,22 @@ export class InvoiceContract extends Contract {
         }
     }
 
+    @Transaction(false)
+    @Returns('boolean')
+    public async isAuthorizedToDelete(ctx: Context, invoiceKey: string): Promise<boolean> {
+        // Get the invoice data
+        let buffer = await ctx.stub.getState(invoiceKey.toString());
+        const invoice = JSON.parse(buffer.toString()) as Invoice;
+
+        // Check if the identity submitting the transaction is the current processor
+        let isAuthorized = await (await ctx.stub.invokeChaincode(`member-contract`, [`checkAuthority`, invoice.sender], ctx.stub.getChannelID())).payload.toString('utf8');
+        if (isAuthorized == 'true'){
+            return true
+        } else {
+            return false
+        }
+    }
+
     @Transaction()
     public async createInvoice(ctx: Context, invoiceNumber: string, sender: string, receiver: string): Promise<void> {
         // Check if the members submitted as sender and receiver exist
@@ -207,7 +223,7 @@ export class InvoiceContract extends Contract {
         }
 
         // Check authority
-        const authorized = await this.isAuthorized(ctx, invoiceKey);
+        const authorized = await this.isAuthorizedToDelete(ctx, invoiceKey);
         if (!authorized) {
             throw new Error(`Not authorized to update invoice ${invoiceKey}`);
         }
@@ -228,12 +244,10 @@ export class InvoiceContract extends Contract {
         let response  = await ctx.stub.invokeChaincode(`member-contract`, [`getMemberCollection`, invoice.receiver], ctx.stub.getChannelID());
         let collection = response.payload.toString('utf8');
 
-        if(!!collection == false){
-            throw new Error(`Could not determine collection for ${invoice.receiver}`);
+        if(collection){
+            // Delete the private data
+            await ctx.stub.deletePrivateData(collection, invoiceKey.toString());
         }
-
-        // Delete the private data
-        await ctx.stub.deletePrivateData(collection, invoiceKey.toString());
     }
 
     @Transaction(false)
