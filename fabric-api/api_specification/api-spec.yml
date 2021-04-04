@@ -7,6 +7,20 @@ servers:
 
 components:
   schemas:
+      memberEnrollmentResponse:
+        type: object
+        properties:
+          message: 
+            type: string
+          privateKey:
+            description: generated private RSA-Key
+            type: string
+      certificateRequestResponse:
+        type: object
+        properties:
+          memberKey: 
+            description: public RSA-Key for the member 
+            type: string
       newInvoice:
         type: object
         properties:
@@ -69,6 +83,44 @@ components:
       scheme: basic
 
 paths:
+  /members/certificate/{memberId}:
+    get:
+      description: get the public key for a member
+      parameters:
+        - in: path
+          name: memberId
+          schema:
+            type: string
+          required: true
+          description: unique Id of a member
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/certificateRequestResponse' 
+        '400':
+          description: Processing error
+  /members/enroll/{memberId}:
+    post:
+      description: enroll a new member 
+      parameters:
+        - in: path
+          name: memberId
+          schema:
+            type: string
+          required: true
+          description: unique Id of a member
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/memberEnrollmentResponse' 
+        '400':
+          description: Processing error
   /invoices/list:
     get:
       description: get all invoices for the account  
@@ -105,7 +157,7 @@ paths:
           schema:
             type: string
           required: true
-          description: unique ID of an invoice
+          description: unique Id of an invoice
       responses:
         '200':
           description: OK
@@ -113,6 +165,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/invoiceResponse' 
+        '400':
+          description: Processing error
     post: 
       description: update an invoice
       parameters:
@@ -121,7 +175,7 @@ paths:
           schema:
             type: string
           required: true
-          description: unique ID of an invoice  
+          description: unique Id of an invoice  
       requestBody:
         required: true
         content:
@@ -142,7 +196,7 @@ paths:
           schema:
             type: string
           required: true
-          description: unique ID of an invoice  
+          description: unique Id of an invoice  
       responses:
         '200':
           description: OK
